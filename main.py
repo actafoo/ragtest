@@ -221,7 +221,7 @@ def parse_and_transform_input(input_text):
     df.iloc[:, 1:] = df.iloc[:, 1:].replace(",", "", regex=True).astype(float)
     
     # 행과 열 변환
-    transformed_df = df.set_index("입력값이 (단위 : 톤/년)").T
+    transformed_df = df.set_index("연도").T
     transformed_df.index.name = "연도"
     
     return transformed_df
