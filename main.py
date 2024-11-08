@@ -208,43 +208,15 @@ def save_conversation_as_txt(chat_history):
 if __name__ == '__main__':
     main()
 
-# 입력 데이터 파싱 및 변환 함수
-def parse_and_transform_input(input_text):
-    # 입력 문자열을 DataFrame으로 변환
-    df = pd.DataFrame(
-        [row.split() for row in input_text.strip().split("\n")[1:]],
-        columns=input_text.strip().split("\n")[0].split("\t")
-    )
-    
-    # 수치형 데이터로 변환
-    df = df.replace("-", np.nan)  # '-'는 NaN으로 변환
-    df.iloc[:, 1:] = df.iloc[:, 1:].replace(",", "", regex=True).astype(float)
-    
-    # 행과 열 변환
-    transformed_df = df.set_index("연도").T
-    transformed_df.index.name = "연도"
-    
-    return transformed_df
 
-# Streamlit UI 요소
-st.title("데이터 변환 도구")
-st.write("데이터를 아래와 같은 형식으로 입력하세요:")
-st.code("""
-연도    2018    2019    2020    2021    2022
-종이    537,085    1,303,112    1,735,282    1,744,196    2,077,413
-캔    446,162    353,226    426,645    340,067    512,225
-플라스틱    111,222    167,430    353,219    423,448    436,205
-병    6,669    25,825    15,888    -    28,924
-""")
-
-# 텍스트 입력란
-input_text = st.text_area("데이터를 입력하세요:")
-
-# 변환 버튼 및 결과 출력
-if st.button("변환"):
-    try:
-        transformed_df = parse_and_transform_input(input_text)
-        st.write("변환된 데이터:")
-        st.dataframe(transformed_df)
-    except Exception as e:
-        st.error("입력 형식에 오류가 있습니다. 형식을 확인하세요.")
+uploaded_files = st.file_uploader("파일을 업로드하세요", accept_multiple_files=True)
+if uploaded_files:
+    folder_path = Path(tempfile.mkdtemp())  # 임시 폴더 경로 생성
+    for uploaded_file in uploaded_files:
+        with open(folder_path / uploaded_file.name, "wb") as f:
+            f.write(uploaded_file.getbuffer())  # 파일 저장
+    files_text = get_text_from_folder(folder_path)  # 텍스트 추출
+    text_chunks = get_text_chunks(files_text)  # 텍스트 청크로 분할
+    vectorstore = get_vectorstore(text_chunks)  # 벡터 스토어 생성
+    st.session_state.conversation = get_conversation_chain(vectorstore, openai_api_key, model_name)  # 대화 체인 설정
+    st.session_state.processComplete = True
