@@ -14,8 +14,18 @@ from langchain.schema.messages import HumanMessage, AIMessage  # 사용자와 AI
 import tiktoken  # 토큰화 처리를 위한 모듈
 import json  # JSON 형식의 데이터 관리
 import base64  # 텍스트 인코딩을 위해 Base64 사용
-import speech_recognition as sr  # 음성 인식 기능을 위한 모듈
+import pandas as pd  # 엑셀 파일 읽기 위한 pandas
 import tempfile  # 임시 파일 생성 및 관리 모듈
+
+
+# 엑셀 파일의 데이터를 불러오는 함수
+def load_excel_data(file):
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        tmp.write(file.getvalue())
+        tmp.close()
+    # pandas를 통해 엑셀 파일 불러오기
+    df = pd.read_excel(tmp.name, sheet_name=None)  # 모든 시트 불러오기
+    return df
 
 # 애플리케이션 실행 함수 정의
 def main():
@@ -24,6 +34,19 @@ def main():
     st.image('energy.png')  # 상단에 이미지를 표시
     st.title("_:red[표 변환기]_ 🏫")  # 제목 표시 (에너지 학습 도우미)
     st.header("😶주의! 결과 값이 맞게 변했는지 꼭 확인하세요!", divider='rainbow')  # 주의사항 표시
+
+    uploaded_file = st.file_uploader("엑셀 파일을 업로드하세요", type=['xlsx'])
+
+    if uploaded_file:
+        # 엑셀 파일을 로드하고 시트의 표 데이터를 추출
+        st.write("엑셀 파일에서 데이터를 로드 중입니다...")
+        excel_data = load_excel_data(uploaded_file)
+
+        # 모든 시트의 표를 출력
+        for sheet_name, df in excel_data.items():
+            st.subheader(f"시트: {sheet_name}")
+            st.write(df)  # DataFrame을 표 형태로 출력
+
 
     # 세션 상태 초기화
     # Streamlit 세션에서 대화 상태, 대화 기록, 처리 완료 여부 등을 초기화하여 유지
@@ -207,16 +230,3 @@ def save_conversation_as_txt(chat_history):
 # 애플리케이션 실행
 if __name__ == '__main__':
     main()
-
-
-uploaded_files = st.file_uploader("파일을 업로드하세요", accept_multiple_files=True)
-if uploaded_files:
-    folder_path = Path(tempfile.mkdtemp())  # 임시 폴더 경로 생성
-    for uploaded_file in uploaded_files:
-        with open(folder_path / uploaded_file.name, "wb") as f:
-            f.write(uploaded_file.getbuffer())  # 파일 저장
-    files_text = get_text_from_folder(folder_path)  # 텍스트 추출
-    text_chunks = get_text_chunks(files_text)  # 텍스트 청크로 분할
-    vectorstore = get_vectorstore(text_chunks)  # 벡터 스토어 생성
-    st.session_state.conversation = get_conversation_chain(vectorstore, openai_api_key, model_name)  # 대화 체인 설정
-    st.session_state.processComplete = True
