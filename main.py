@@ -22,8 +22,8 @@ def main():
     # 페이지 설정 (Streamlit 상단 바 구성)
     st.set_page_config(page_title="표 뒤집기", page_icon="📊")  # 웹 페이지 제목과 아이콘 설정
     st.image('energy.png')  # 상단에 이미지를 표시
-    st.title("_:red[에너지 학습 도우미]_ 🏫")  # 제목 표시 (에너지 학습 도우미)
-    st.header("😶주의! 이 챗봇은 참고용으로 사용하세요!", divider='rainbow')  # 주의사항 표시
+    st.title("_:red[표 변환기]_ 🏫")  # 제목 표시 (에너지 학습 도우미)
+    st.header("😶주의! 결과 값이 맞게 변했는지 꼭 확인하세요!", divider='rainbow')  # 주의사항 표시
 
     # 세션 상태 초기화
     # Streamlit 세션에서 대화 상태, 대화 기록, 처리 완료 여부 등을 초기화하여 유지
@@ -207,3 +207,44 @@ def save_conversation_as_txt(chat_history):
 # 애플리케이션 실행
 if __name__ == '__main__':
     main()
+
+# 입력 데이터 파싱 및 변환 함수
+def parse_and_transform_input(input_text):
+    # 입력 문자열을 DataFrame으로 변환
+    df = pd.DataFrame(
+        [row.split() for row in input_text.strip().split("\n")[1:]],
+        columns=input_text.strip().split("\n")[0].split("\t")
+    )
+    
+    # 수치형 데이터로 변환
+    df = df.replace("-", np.nan)  # '-'는 NaN으로 변환
+    df.iloc[:, 1:] = df.iloc[:, 1:].replace(",", "", regex=True).astype(float)
+    
+    # 행과 열 변환
+    transformed_df = df.set_index("입력값이 (단위 : 톤/년)").T
+    transformed_df.index.name = "연도"
+    
+    return transformed_df
+
+# Streamlit UI 요소
+st.title("데이터 변환 도구")
+st.write("데이터를 아래와 같은 형식으로 입력하세요:")
+st.code("""
+입력값이 (단위 : 톤/년)    2018    2019    2020    2021    2022
+종이    537,085    1,303,112    1,735,282    1,744,196    2,077,413
+캔    446,162    353,226    426,645    340,067    512,225
+플라스틱    111,222    167,430    353,219    423,448    436,205
+병    6,669    25,825    15,888    -    28,924
+""")
+
+# 텍스트 입력란
+input_text = st.text_area("데이터를 입력하세요:")
+
+# 변환 버튼 및 결과 출력
+if st.button("변환"):
+    try:
+        transformed_df = parse_and_transform_input(input_text)
+        st.write("변환된 데이터:")
+        st.dataframe(transformed_df)
+    except Exception as e:
+        st.error("입력 형식에 오류가 있습니다. 형식을 확인하세요.")
